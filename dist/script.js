@@ -2042,12 +2042,21 @@ function () {
 
     this.btnBlock = document.createElement('div');
     this.colorPicker = document.createElement('input');
+    this.clear = document.createElement('div');
+    this.scale = localStorage.getItem('scale') || 1; //в ls из ключа scale получаем значение, если его нет, то по умол. будет 1
+
+    this.color = localStorage.getItem('color') || '#ffffff'; //в ls из ключа color получаем значение, если его нет, то по умол. будет #ffffff - белый цвет
+
     this.btnBlock.addEventListener('click', function (e) {
       //после нажатия на кнопку запускаем ф-ю onScaleChange, кот-я ниже
-      _this.onScaleChange(e);
+      _this.onScaleChange(e); //событие e нужно для последующей проверки его существования
+
     });
     this.colorPicker.addEventListener('input', function (e) {
       _this.onColorChange(e);
+    });
+    this.clear.addEventListener('click', function () {
+      _this.reset();
     });
   } //получение значения на нажимаемую кнопку
 
@@ -2055,15 +2064,16 @@ function () {
   _createClass(Customizator, [{
     key: "onScaleChange",
     value: function onScaleChange(e) {
-      var scale;
+      var _this2 = this;
+
       var body = document.querySelector('body');
 
-      if (e.target.value) {
-        scale = +e.target.value.replace(/x/g, '');
+      if (e) {
+        this.scale = +e.target.value.replace(/x/g, '');
       } //Ф-я рекурсии
 
 
-      function recursy(elem) {
+      var recursy = function recursy(elem) {
         elem.childNodes.forEach(function (node) {
           //перебор всех дочерних элементов body. childNodes приходят в виде массива
           if (node.nodeName === '#text' && node.nodeValue.replace(/\s+/g, '').length > 0) {
@@ -2073,18 +2083,19 @@ function () {
               var value = window.getComputedStyle(node.parentNode, null).fontSize; //получаем размер шрифта  родителя ноды
 
               node.parentNode.setAttribute('data-fz', +value.replace(/px/g, ''));
-              node.parentNode.style.fontSize = node.parentNode.getAttribute('data-fz') * scale + 'px';
+              node.parentNode.style.fontSize = node.parentNode.getAttribute('data-fz') * _this2.scale + 'px';
             } else {
-              node.parentNode.style.fontSize = node.parentNode.getAttribute('data-fz') * scale + 'px';
+              node.parentNode.style.fontSize = node.parentNode.getAttribute('data-fz') * _this2.scale + 'px';
             }
           } else {
             //если условие выше не выполняются
             recursy(node); //то снова запускаем ф-ю рекурсии
           }
         });
-      }
+      };
 
       recursy(body);
+      localStorage.setItem('scale', this.scale);
     }
   }, {
     key: "onColorChange",
@@ -2092,17 +2103,55 @@ function () {
       var body = document.querySelector('body');
       body.style.backgroundColor = e.target.value; //присваиваем значение получаемое от inputa цвета
 
-      console.log(e.target.value);
+      localStorage.setItem('color', e.target.value); //установка значения цвета в localstorage
+    }
+  }, {
+    key: "setBgColor",
+    value: function setBgColor() {
+      var body = document.querySelector('body');
+      body.style.backgroundColor = this.color; //записываем цвет из localstorage
+
+      this.colorPicker.value = this.color; //записываем цвет в цветовой input
+    } //Размещаем стили на страницу в head
+
+  }, {
+    key: "injectStyle",
+    value: function injectStyle() {
+      var style = document.createElement('style'); //создаем элемент style
+
+      style.innerHTML = " \n    .panel {\n      display: flex;\n      justify-content: space-around;\n      align-items: center;\n      position: fixed;\n      top: 10px;\n      right: 0;\n      border: 1px solid rgba(0,0,0, .2);\n      box-shadow: 0 0 20px rgba(0,0,0, .5);\n      width: 300px;\n      height: 60px;\n      background-color: #fff;\n    }\n    .scale {\n      display: flex;\n      justify-content: space-around;\n      align-items: center;\n      width: 100px;\n      height: 40px;\n    }\n    .scale_btn {\n      display: block;\n      width: 40px;\n      height: 40px;\n      border: 1px solid rgba(0,0,0, .2);\n      border-radius: 4px;\n      font-size: 18px;\n    }\n    .color {\n      width: 40px;\n      height: 40px;\n    }\n    .clear {\n      font-size: 20px;\n      cursor: pointer;\n    }"; //в style прописываем стили панели
+
+      document.querySelector('head').appendChild(style); //размещаем в head наши стили
+    } //Метод очистки localstorage
+
+  }, {
+    key: "reset",
+    value: function reset() {
+      localStorage.clear(); //используем метод очистки ls
+
+      this.scale = 1; //устанавливаем значение масштаба по умолчанию
+
+      this.color = '#ffffff'; //устанавливаем значение цвета по умол
+
+      this.onScaleChange(); //вызываем ф-ю установки масштаба
+
+      this.setBgColor(); //вызываем ф-ю установки цвета
     }
   }, {
     key: "render",
     value: function render() {
       //рендер панели справа сверху
+      this.onScaleChange();
+      this.setBgColor();
+      this.injectStyle(); //вызываем для установки стилей панели
+
       var scaleInputS = document.createElement('input'),
           scaleInputM = document.createElement('input'),
           panel = document.createElement('div');
-      panel.append(this.btnBlock, this.colorPicker); // в панель размещаем блок с кнопками и выбор цвета
+      panel.append(this.btnBlock, this.colorPicker, this.clear); // в панель размещаем блок с кнопками и выбор цвета
 
+      this.clear.innerHTML = "&times";
+      this.clear.classList.add('clear');
       scaleInputS.classList.add('scale_btn');
       scaleInputM.classList.add('scale_btn');
       this.btnBlock.classList.add('scale');
